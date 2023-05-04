@@ -9,6 +9,7 @@ name = "_tiktoken"
 crate-type = ["cdylib"]
 
 [dependencies]
+libc = "0.2"
 
 # tiktoken dependencies
 fancy-regex = "0.10.0"

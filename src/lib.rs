@@ -1,11 +1,20 @@
 // This check is new and seems buggy (possibly with PyO3 interaction)
 #![allow(clippy::borrow_deref_ref)]
 
+extern crate libc;
+
+use libc::c_char;
 use std::collections::HashSet;
+use std::convert::TryFrom;
+use std::slice;
+use std::str;
 use std::thread;
 
 use fancy_regex::Regex;
 use rustc_hash::FxHashMap as HashMap;
+
+mod mergeable_ranks;
+mod special_tokens;
 
 fn _byte_pair_merge<T>(
     piece: &[u8],
@@ -549,11 +558,31 @@ pub extern fn blinking_light_demo() -> i32 {
     return 7337;
 }
 
+#[no_mangle]
+pub extern fn count_tokens(text: *const c_char, length: usize) -> i32 {
+    let ranks = mergeable_ranks::mergeable_ranks();
+    let special_tokens = special_tokens::special_tokens();
+    let pattern = r"(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}{1,3}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+";
+    let slice = unsafe {
+        str::from_utf8_unchecked(slice::from_raw_parts(text as *const u8, length))
+    };
+    match CoreBPE::new(ranks, special_tokens, pattern) {
+        Ok(bpe) => {
+            let (tokens, _last) = bpe._encode_native(slice, &HashSet::new());
+            match i32::try_from(tokens.len()) {
+                Ok(number) => number,
+                _ => -1
+            }
+        },
+        _ => -1
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::{CoreBPE,byte_pair_split};
     use rustc_hash::FxHashMap as HashMap;
-
-    use crate::byte_pair_split;
+    use std::collections::HashSet;
 
     #[test]
     fn very_simple_test() {
@@ -563,5 +592,16 @@ mod tests {
 
         let res = byte_pair_split(b"abcd", &ranks);
         assert_eq!(res, vec![b"ab", b"cd"]);
+    }
+
+    #[test]
+    fn count_tokens_test() {
+        let mut ranks = HashMap::default();
+        ranks.insert(b"ab".to_vec(), 1);
+        ranks.insert(b"cd".to_vec(), 2);
+        let special_tokens = HashMap::default();
+        let pattern = "";
+        let core = CoreBPE::new(ranks, special_tokens, pattern);
+        core.unwrap()._encode_native("Hello, world!", &HashSet::new());
     }
 }
