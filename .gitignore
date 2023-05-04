@@ -1,2 +1,5 @@
 /Cargo.lock
+/ext/Makefile
+/ext/tiktoken.bundle
+/ext/tiktoken.o
 /target

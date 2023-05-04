@@ -544,6 +544,11 @@ impl CoreBPE {
     }
 }
 
+#[no_mangle]
+pub extern fn blinking_light_demo() -> i32 {
+    return 7337;
+}
+
 #[cfg(test)]
 mod tests {
     use rustc_hash::FxHashMap as HashMap;
